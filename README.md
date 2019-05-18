@@ -1,7 +1,7 @@
 # pyAsar
-Library for working with .asar files.
+Library for working with .asar files
 # Installation
-    pip install pyasar
+    pip install pyAsar
 # Example usage
     from pyAsar import pack_asar, extract_asar
     
