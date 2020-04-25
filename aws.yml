@@ -1,0 +1,251 @@
+Skip to content
+Projects
+Groups
+Snippets
+Help
+Toggle navigation
+Snippets
+$1929022
+public
+Authored 3 months ago by avatar Fzero2020
+rate_check
+sub 120 character column width
+
+Edited 3 months ago
+<script src='https://gitlab.com/snippets/1929022.js'></script>
+rate_check_v103.rb
+4.22 KiB
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+#!/usr/bin/env/ruby
+require 'net/http'
+require 'json'
+start_time = Time.now.to_i
+def get_raw_exchange_rate(exchange_name, exchange_hash, *start_time)
+  JSON.parse(Net::HTTP.get(URI(exchange_hash["#{exchange_name}"])))
+end
+def get_binance_price(raw_api)
+  raw_api["price"].to_i
+end
+def get_bitfinex_price(raw_api)
+  raw_api[0][3].to_i
+end
+def get_bitpay_price(raw_api)
+  raw_api["rate"].to_i
+end
+def get_bitstamp_price(raw_api)
+  raw_api["last"].to_i
+end
+def get_coinbase_price(raw_api)
+  raw_api["data"]["rates"]["USD"].to_i
+end
+def get_coinmarketcap_price(raw_api)
+  #*splat operator collects all items
+  Hash[*raw_api.flatten]["price_usd"].to_i
+end
+def get_exmo_price(raw_api)
+  raw_api["BTC_USD"]["last_trade"].to_i
+end
+def get_kraken_price(raw_api)
+  raw_api["result"]["XXBTZUSD"]["c"][0].to_i
+end
+def get_lbc_price(raw_api)
+  raw_api["USD"]["rates"]["last"].to_i
+end
+def get_yadio_price(raw_api)
+  raw_api["usd"].to_i
+end
+def get_ars_price(exchange_name, exchange_hash, price, exchange_price)
+  raw_api = Net::HTTP.get(URI(exchange_hash["coinmonitor"]))
+  price.to_i/JSON.parse(raw_api)["DOL_blue"].to_i - exchange_price
+end
+def get_irr_price(exchange_name, exchange_hash, price, exchange_price)
+  raw_api = Net::HTTP.get(URI(exchange_hash["bonbast"]))
+  sell = raw_api.match(/<td id="usd1"[^>]*>(\d+)<\/td>/)[1].to_i
+  buy  = raw_api.match(/<td id="usd2"[^>]*>(\d+)<\/td>/)[1].to_i
+  price/((sell + buy)/0.2).to_i - exchange_price
+end
+def get_ves_price(exchange_name, exchange_hash, price, exchange_price)
+  ves_api = JSON.parse(Net::HTTP.get(URI(exchange_hash["yadio"])))
+  ((price - ves_api["rate"])/(ves_api["rate"]/ves_api["usd"])).to_i
+end
+def get_offer_links(file_name)
+  File.readlines(file_name)
+end
+def get_hh_offer_price(offers, i)
+  offer_html = Net::HTTP.get(URI(URI.parse(URI.encode(offers[i])).to_s[0..-4]))
+  price = offer_html.match(/(?<=\"price\">)(\d+)/)[0].to_i
+  currency = offer_html.match(/(?<=\"currency\">)(\w+)/)[0].to_s.downcase
+  return price, currency
+end
+def get_discrep(currency, price, exchange_price, exchange_hash, exchange_name)
+  #Should I do this a different way? Are the when's unnecessary?
+  #How to call the "single use exchanges" another way?
+  case currency
+    when "ars"
+      get_ars_price(exchange_hash, exchange_name, price, exchange_price)
+    when "irr"
+      get_irr_price(exchange_hash, exchange_name, price, exchange_price)
+    when "usd"
+      price.to_i - exchange_price
+    when "ves"
+      get_ves_price(exchange_hash, exchange_name, price, exchange_price)
+    else
+      raw_html = Net::HTTP.get(URI("https://worldforexrates.com/#{currency}/usd/#{price}-exchange-rate/"))
+      #Is it ok to use .replace here, or is .match better?
+      (raw_html.replace raw_html[/rate-title.+/].split("= ")[1].split(".")[0].sub!(",", "")).to_i - exchange_price
+  end
+end
+exchange_hash = File.readlines('exchanges.txt', chomp: true).map { |line| line.split(", ") }.to_h
+exchange_hash.each do |key, value|
+  #Questions for mentor:
+  #Should this loop know what exchanges to check/not check the rates of (EG Bonbast = no, Exmo = yes)
+  #Or should this logic be outside of this loop?
+  #Instead of using #if stmt for the exit condition, How to read return value from rate fetching method?
+  #If it doesn't return USD,
+  #then I exit(in the future I might be returning more than just USD currency source rates)
+  
+  #Comment for production code:
+  #This loop exits if it detects a "single use exchange" (an exchange not listed on the GUI's "create offer" page)
+  #I appended the "single use exchanges" at end of "exchanges.txt" file.
+if key == ("bonbast")
+elapsed_time = Time.now.to_i - start_time
+    puts "\nProgram took " + "#{elapsed_time}" + " seconds to run"
+    exit
+  end
+  puts "\nRunning #{key}"
+  exchange_usd_price = send(:"get_#{key}_price", (get_raw_exchange_rate(key, exchange_hash, *start_time)))
+  offers = get_offer_links("offer_urls_#{key}.txt")
+  discrep_array = [[]]
+  offers.each_with_index do |val, i|
+    price, currency = get_hh_offer_price(offers, i)
+    discrep_array.push("#{get_discrep(currency, price, exchange_usd_price, key, exchange_hash)}".to_s)
+    puts discrep_array.last + " " + currency
+  end
+end
+Please register or sign in to comment
