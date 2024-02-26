@@ -1,11 +1,9 @@
-# pyAsar
+# asarPy
 Library for working with .asar files
 # Installation
-    pip install pyAsar
-# Example usage
-    from pyAsar import pack_asar, extract_asar
+    pip install asarPy
+# Example
+    from asarPy import pack_asar, extract_asar
     
-    extract_asar("file.asar", "folder")
-    pack_asar("folder", "file.asar")
-# License
-    http://www.wtfpl.net/
+    extract_asar("app.asar", "dir")
+    pack_asar("dir", "app.asar")
